@@ -37,7 +37,6 @@
 
 # import htmlentitydefs
 import re
-import string
 import sys
 import email
 import io
@@ -175,15 +174,15 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
             http_equiv = content = None
             for k, v in attrs:
                 if k == "http-equiv":
-                    http_equiv = string.lower(v)
+                    http_equiv = v.lower()
                 elif k == "content":
                     content = v
             if http_equiv == "content-type" and content:
                 # use email to parse the http header
-                header = email.Message(
+                header = email.message.Message(
                     io.StringIO("%s: %s\n\n" % (http_equiv, content))
                 )
-                encoding = header.getparam("charset")
+                encoding = header.get_charset()
                 if encoding:
                     self.encoding = encoding
         l_tag = tag.lower()
@@ -267,7 +266,7 @@ class HTMLTreeBuilder(ElementTree.TreeBuilder):
         return self._last
 
     def data(self, data):
-        if isinstance(data, type('')) and is_not_ascii(data):
+        if isinstance(data, bytes) and is_not_ascii(data):
             # convert to unicode, but only if necessary
             data = str(data, self.encoding, "ignore")
         ElementTree.TreeBuilder.data(self, data)

@@ -1314,7 +1314,7 @@ class PerlImportHandler(ImportHandler):
 
     def _findScannableFiles(self, xxx_todo_changeme,
                             dirname, names):
-        (files, searchedDirs,
+                            (files, searchedDirs,
              skipTheseDirs, skipRareImports) = xxx_todo_changeme
         if sys.platform.startswith("win"):
             cpath = dirname.lower()

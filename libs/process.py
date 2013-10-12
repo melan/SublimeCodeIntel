@@ -243,6 +243,7 @@ class ProcessOpen(Popen):
             output is redirected to Komodo's log files.
         "universal_newlines": On by default (the opposite of subprocess).
         """
+        self._child_created = False
         self.__use_killpg = False
         auto_piped_stdin = False
         preexec_fn = None
@@ -266,22 +267,22 @@ class ProcessOpen(Popen):
                     cmd = '"%s"' % (cmd, )
 
             if sys.version_info[:2] < (3, 0):
-                # XXX - subprocess needs to be updated to use the wide string API.
-                # subprocess uses a Windows API that does not accept unicode, so
-                # we need to convert all the environment variables to strings
-                # before we make the call. Temporary fix to bug:
-                #   http://bugs.activestate.com/show_bug.cgi?id=72311
-                if env:
-                    encoding = sys.getfilesystemencoding()
-                    _enc_env = {}
-                    for key, value in env.items():
-                        try:
-                            _enc_env[key.encode(encoding)] = value.encode(encoding)
-                        except UnicodeEncodeError:
-                            # Could not encode it, warn we are dropping it.
-                            log.warn("Could not encode environment variable %r "
-                                     "so removing it", key)
-                    env = _enc_env
+            # XXX - subprocess needs to be updated to use the wide string API.
+            # subprocess uses a Windows API that does not accept unicode, so
+            # we need to convert all the environment variables to strings
+            # before we make the call. Temporary fix to bug:
+            #   http://bugs.activestate.com/show_bug.cgi?id=72311
+            if env:
+                encoding = sys.getfilesystemencoding()
+                _enc_env = {}
+                for key, value in env.items():
+                    try:
+                        _enc_env[key.encode(encoding)] = value.encode(encoding)
+                        except (UnicodeEncodeError, UnicodeDecodeError):
+                        # Could not encode it, warn we are dropping it.
+                        log.warn("Could not encode environment variable %r "
+                                 "so removing it", key)
+                env = _enc_env
 
             if flags is None:
                 flags = CREATE_NO_WINDOW
