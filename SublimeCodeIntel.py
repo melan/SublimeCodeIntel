@@ -769,22 +769,22 @@ def codeintel_scan(view, path, content, lang, callback=None, pos=None, forms=Non
             buf = mgr.buf_from_content(content, lang, env, path or "<Unsaved>", 'utf-8')
 
             if mgr.is_citadel_lang(lang):
-            now = datetime.datetime.now()
+                now = datetime.datetime.now()
             if not _ci_next_scan_.get(vid) or now > _ci_next_scan_[vid]:
                 _ci_next_scan_[vid] = now + datetime.timedelta(seconds=10)
-                    despair = 0
-                    despaired = False
-                    msg = "Updating indexes for '%s'... The first time this can take a while." % lang
-                    print(msg, file=condeintel_log_file)
-                    logger(view, 'info', msg, timeout=20000, delay=1000)
-                    if not path or is_scratch:
-                        buf.scan()  # FIXME: Always scanning unsaved files (since many tabs can have unsaved files, or find other path as ID)
+                despair = 0
+                despaired = False
+                msg = "Updating indexes for '%s'... The first time this can take a while." % lang
+                print(msg, file=condeintel_log_file)
+                logger(view, 'info', msg, timeout=20000, delay=1000)
+                if not path or is_scratch:
+                    buf.scan()  # FIXME: Always scanning unsaved files (since many tabs can have unsaved files, or find other path as ID)
+                else:
+                    if is_dirty:
+                        mtime = 1
                     else:
-                        if is_dirty:
-                            mtime = 1
-                        else:
-                            mtime = os.stat(path)[stat.ST_MTIME]
-                        buf.scan(mtime=mtime, skip_scan_time_check=is_dirty)
+                        mtime = os.stat(path)[stat.ST_MTIME]
+                    buf.scan(mtime=mtime, skip_scan_time_check=is_dirty)
         else:
             buf = None
         if callback:
