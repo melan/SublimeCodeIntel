@@ -426,8 +426,8 @@ class AST2CIXVisitor(ast.NodeVisitor):
         log.debug("getCIX")
         self.emit_start('file', dict(lang=self.lang, path=path))
         if self.st:
-        moduleNS = self.st[()]
-        self.cix_module(moduleNS)
+            moduleNS = self.st[()]
+            self.cix_module(moduleNS)
         self.emit_end('file')
         file = self.cix.close()
         return file
@@ -494,7 +494,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             try:
                 lastNode = list(ast.iter_child_nodes(lastNode))[-1]
                 if hasattr(lastNode, 'lineno'):
-            namespace["lineend"] = lastNode.lineno
+                    namespace["lineend"] = lastNode.lineno
             except IndexError:
                 break
 
@@ -550,7 +550,7 @@ class AST2CIXVisitor(ast.NodeVisitor):
             try:
                 lastNode = list(ast.iter_child_nodes(lastNode))[-1]
                 if hasattr(lastNode, 'lineno'):
-            namespace["lineend"] = lastNode.lineno
+                    namespace["lineend"] = lastNode.lineno
             except IndexError:
                 break
 
@@ -650,34 +650,34 @@ class AST2CIXVisitor(ast.NodeVisitor):
         sigArgs = []
         for i in range(len(node_args.args)):
             argName = node_args.args[i].arg
-                    argument = {"name": argName,
-                                "nspath": nspath+(argName,),
-                                "doc": None,
-                                "types": {},
-                                "line": node.lineno,
-                                "symbols": {}}
-                if i == kwargsIndex:
-                    argument["attributes"] = "kwargs"
-                    sigArgs.append("**"+argName)
-                elif i == varargsIndex:
-                    argument["attributes"] = "varargs"
-                    sigArgs.append("*"+argName)
-                elif i >= defaultArgsBaseIndex:
+            argument = {"name": argName,
+                        "nspath": nspath+(argName,),
+                        "doc": None,
+                        "types": {},
+                        "line": node.lineno,
+                        "symbols": {}}
+            if i == kwargsIndex:
+                argument["attributes"] = "kwargs"
+                sigArgs.append("**"+argName)
+            elif i == varargsIndex:
+                argument["attributes"] = "varargs"
+                sigArgs.append("*"+argName)
+            elif i >= defaultArgsBaseIndex:
                 defaultNode = node_args.defaults[i - defaultArgsBaseIndex]
-                    try:
-                        argument["default"] = self._getExprRepr(defaultNode)
+                try:
+                    argument["default"] = self._getExprRepr(defaultNode)
                 except PythonCILEError as ex:
-                        raise PythonCILEError("unexpected default argument node "
-                                              "type for Function '%s': %s"
-                                              % (node.name, ex))
-                    sigArgs.append(argName+'='+argument["default"])
-                    for t in self._guessTypes(defaultNode):
-                        log.info("guessed type: %s ::= %s", argName, t)
-                        if t not in argument["types"]:
-                            argument["types"][t] = 0
-                        argument["types"][t] += 1
-                else:
-                    sigArgs.append(argName)
+                    raise PythonCILEError("unexpected default argument node "
+                                          "type for Function '%s': %s"
+                                          % (node.name, ex))
+                sigArgs.append(argName+'='+argument["default"])
+                for t in self._guessTypes(defaultNode):
+                    log.info("guessed type: %s ::= %s", argName, t)
+                    if t not in argument["types"]:
+                        argument["types"][t] = 0
+                    argument["types"][t] += 1
+            else:
+                sigArgs.append(argName)
 
                 if i == 0 and parentIsClass:
                     # If this is a class method, then the first arg is the class
@@ -1066,14 +1066,14 @@ class AST2CIXVisitor(ast.NodeVisitor):
         elif isinstance(expr, ast.BinOp):
             if isinstance(expr.op, (ast.FloorDiv, ast.BitAnd, ast.BitOr,
                                     ast.BitXor, ast.RShift, ast.LShift)):
-            ts = [int.__name__]
+                ts = [int.__name__]
         elif isinstance(expr, ast.BoolOp):
             if isinstance(expr.op, (ast.Or, ast.And)):
-            ts = []
+                ts = []
                 for node in expr.values:
-                for t in self._guessTypes(node):
-                    if t not in ts:
-                        ts.append(t)
+                    for t in self._guessTypes(node):
+                        if t not in ts:
+                            ts.append(t)
         elif isinstance(expr, (ast.Compare, ast.Not)):
             ts = [type(1 == 2).__name__]
         elif isinstance(expr, ast.UnaryOp):
@@ -1252,32 +1252,32 @@ class AST2CIXVisitor(ast.NodeVisitor):
                 s = self._getExprRepr(node.target) + ops[node.op] + self._getExprRepr(node.value)
         elif isinstance(node, ast.BinOp):
             if isinstance(node.op, ast.BitOr):
-            creprs = []
+                creprs = []
                 for cnode in [node.left, node.right]:
                     if isinstance(cnode, (ast.Num, ast.Str, ast.Bytes)):
-                    crepr = self._getExprRepr(cnode)
-                else:
-                    crepr = "(%s)" % self._getExprRepr(cnode)
-                creprs.append(crepr)
-            s = "|".join(creprs)
+                        crepr = self._getExprRepr(cnode)
+                    else:
+                        crepr = "(%s)" % self._getExprRepr(cnode)
+                    creprs.append(crepr)
+                s = "|".join(creprs)
             elif isinstance(node.op, ast.BitAnd):
-            creprs = []
+                creprs = []
                 for cnode in [node.left, node.right]:
                     if isinstance(cnode, (ast.Num, ast.Str, ast.Bytes)):
-                    crepr = self._getExprRepr(cnode)
+                        crepr = self._getExprRepr(cnode)
                 else:
                     crepr = "(%s)" % self._getExprRepr(cnode)
                 creprs.append(crepr)
-            s = "&".join(creprs)
+                s = "&".join(creprs)
             elif isinstance(node.op, ast.BitXor):
-            creprs = []
+                creprs = []
                 for cnode in [node.left, node.right]:
                     if isinstance(cnode, (ast.Num, ast.Str, ast.Bytes)):
-                    crepr = self._getExprRepr(cnode)
+                        crepr = self._getExprRepr(cnode)
                 else:
                     crepr = "(%s)" % self._getExprRepr(cnode)
                 creprs.append(crepr)
-            s = "^".join(creprs)
+                s = "^".join(creprs)
         elif isinstance(node, ast.Lambda):
             s = "lambda"
             # Handle arguments. The format of the relevant Function attributes
@@ -1301,18 +1301,18 @@ class AST2CIXVisitor(ast.NodeVisitor):
             sigArgs = []
             for i in range(len(node_args.args)):
                 argName = node_args.args[i].arg
-                    if i == kwargsIndex:
+                if i == kwargsIndex:
                     sigArgs.append("**" + argName)
-                    elif i == varargsIndex:
+                elif i == varargsIndex:
                     sigArgs.append("*" + argName)
-                    elif i >= defaultArgsBaseIndex:
-                        defaultNode = node.defaults[i-defaultArgsBaseIndex]
-                        try:
+                elif i >= defaultArgsBaseIndex:
+                    defaultNode = node.defaults[i-defaultArgsBaseIndex]
+                    try:
                         sigArgs.append(argName + "=" + self._getExprRepr(defaultNode))
-                        except PythonCILEError:
-                            # XXX Work around some trouble cases.
+                    except PythonCILEError:
+                        # XXX Work around some trouble cases.
                         sigArgs.append(argName + "=...")
-                    else:
+                else:
                     sigArgs.append(argName)
             if sigArgs:
                 s += " " + ",".join(sigArgs)

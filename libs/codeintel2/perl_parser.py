@@ -1858,7 +1858,7 @@ class Parser:
                     pass
                 else:
                     if not parseArgs:
-                    self.tokenizer.put_back(tok)
+                        self.tokenizer.put_back(tok)
 
                     # Python doesn't have Perl's localizer, so we do this manually.
                     currFunction = self.moduleInfo.currentFunction
