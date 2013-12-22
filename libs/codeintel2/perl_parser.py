@@ -494,7 +494,7 @@ class ModuleInfo:
             # Allow for datasection-based POD\
             if docs:
                 re3_s = (r'''
-                                ((?:^=(?:item|head)\w*\s*\r?\n(?:\s*\r?\n)*
+                                ((?:^=(?:item|head|pod)\w*\s*\r?\n(?:\s*\r?\n)*
                                 .*?(?:%s\s*::|%s\s*->|\$[\w_]+\s*->|[ \t]+)
                                 %s(?![\w\d_]).*\r?\n\s*\r?\n)+)
                                 # Now the description
@@ -997,7 +997,11 @@ class Parser:
         while True:
             tok = self.tokenizer.get_next_token()
             if self.classifier.is_variable(tok):
-                nameList.append((tok['text'], tok['start_line']))
+                args = {'name': tok['text'], 'line': tok['start_line']}
+                if args['name'] == '$self':
+                    args['aType'] = {'assign': self.moduleInfo.currentNS.name}
+                nameList.append(**args)
+
             else:
                 break
             tok = self.tokenizer.get_next_token()
@@ -1019,10 +1023,9 @@ class Parser:
             else:
                 tok = self.tokenizer.put_back(tok)
         for varInfo in nameList:
-            if isArg:
-                self.moduleInfo.doSetArg(varInfo[0])
-            self.moduleInfo.doSetVar(name=varInfo[0], line=varInfo[1],
-                                     scope=var_scope)
+            if isArg and varInfo['name'] != '$self':
+                self.moduleInfo.doSetArg(varInfo['name'])
+            self.moduleInfo.doSetVar(**varInfo)
     # end collect_multiple_args
 
     # Expect = shift ;
@@ -1041,10 +1044,12 @@ class Parser:
                 self.finish_var_assignment(varName, origLineNo, False,
                                            scope=var_scope, context=context)
                 return
-        if isArg:
+        if isArg and varName != '$self':
             self.moduleInfo.doSetArg(varName)
-        self.moduleInfo.doSetVar(name=varName, line=origLineNo,
-                                 scope=var_scope)
+        args = {'name': varName, 'line': origLineNo, 'scope': var_scope}
+        if varName == '$self':
+            args['aType'] = {'assign': self.moduleInfo.currentNS.name}
+        self.moduleInfo.doSetVar(**args)
 
     def de_quote_string(self, tok):
         tval = tok['text']
@@ -1530,7 +1535,7 @@ class Parser:
                                                    lineNo=self.tokenizer.curr_line_no())
                         self.moduleInfo.doStartNS(ns)
                         popNS = 1
-                elif tval == 'sub':
+                elif tval in ['sub', 'method', 'func']:
                     self.start_process_sub_definition(tval, False)
                     # Is outer sub
                 elif tval in ['BEGIN', 'END', 'AUTOLOAD']:
@@ -1694,16 +1699,14 @@ class Parser:
                         self.process_import(fqModule, origLineNo)
                 elif tval == 'use':
                     self.process_use(1)
-                elif tval in [ 'sub', 'func', 'method' ]:
-                    if tval in ['func', 'method']:
-                        tval = 'sub'
+                elif tval in ['sub', 'func', 'method']:
                     # Nested subs in Perl aren't really nested --
                     # They're kind of like named closures -- accessible
                     # by name from an outer context, but they can bind
                     # the local state of the sub when defined.
                     # But we can call them anyway, so let's process them
 
-                    self.start_process_sub_definition( tval, True )  # Is inner
+                    self.start_process_sub_definition(tval, True)  # Is inner
                 else:
                     self.skip_to_end_of_stmt()
             elif self.classifier.is_variable_scalar(tok, self.classifier.is_scalar_cb):
@@ -1846,11 +1849,11 @@ class Parser:
             if fnName:
                 tok = self.tokenizer.get_next_token()
                 parseArgs = False
-                if self.classifier.is_operator( tok, "(" ) and funcType not in ( 'func', 'method' ):
+                if self.classifier.is_operator(tok, "(") and funcType not in ('func', 'method'):
                     self.skip_to_close_paren()
                     tok = self.tokenizer.get_next_token()
-                    parseArgs = False
-                else:
+
+                if self.classifier.is_operator(tok, "(") and funcType in ['func', 'method']:
                     parseArgs = True
 
                 if self.classifier.is_operator(tok, ";"):
@@ -1861,44 +1864,44 @@ class Parser:
                         self.tokenizer.put_back(tok)
 
                     # Python doesn't have Perl's localizer, so we do this manually.
-                    currFunction = self.moduleInfo.currentFunction
-                    self.moduleInfo.doStartFn( FunctionInfo( name = fnName.strip(), lineNo = startLineNo ) )
+                    # currFunction = self.moduleInfo.currentFunction
+                    # log.debug("currFunction: %s", pprint.pprint(currFunction))
+                    self.moduleInfo.doStartFn(FunctionInfo(name=fnName.strip(), lineNo=startLineNo))
 
                     if parseArgs:
-                        nameList = []
+                        nameList = ["$self"] if funcType == "method" else []
                         isOptional = False
                         while True:
                             tok = self.tokenizer.get_next_token()
-                            if self.classifier.is_variable( tok ):
+                            if self.classifier.is_variable(tok):
                                 if isOptional:
-                                    nameList.append( "[" + tok["text"] + "]" )
+                                    nameList.append("[" + tok["text"] + "]")
                                 else:
-                                    nameList.append( tok["text"] )
+                                    nameList.append(tok["text"])
                                 isOptional = False
 
-                            elif self.classifier.is_operator( tok, "," ):
+                            elif self.classifier.is_operator(tok, ","):
                                 continue
-                            elif self.classifier.is_operator( tok, ":" ):
+                            elif self.classifier.is_operator(tok, ":"):
                                 isOptional = True
                             else:
                                 break
 
                         for argName in nameList:
-                            self.moduleInfo.doSetArg( argName )
+                            if not (argName == "$self" and funcType == "method"):
+                                self.moduleInfo.doSetArg(argName)
 
-                        if funcType == "method":
-                            args = {'name':"$self", 'line':tok["start_line"],
-                                    "aType": { "assign" : self.moduleInfo.currentNS.name}, "scope": "local",
-                                    "context": "my"}
+                            args = {'name': argName, 'line': startLineNo, 'scope': "my"}
 
-                            log.info("Self args: " + str(args));
-                            self.moduleInfo.doSetVar( **args )
+                            if argName == '$self' and funcType == 'method':
+                                args['aType'] = {'assign': self.moduleInfo.currentNS.name}
 
+                            self.moduleInfo.doSetVar(**args)
 
                     self.process_sub_contents(isInnerSub)
                     self.moduleInfo.doEndFn(
                         lineNo=self.tokenizer.curr_line_no())
-                    self.moduleInfo.currentFunction = currFunction
+                    # self.moduleInfo.currentFunction = currFunction
             else:
                 self.skipAnonSubContents()
     # end start_process_sub_definition
