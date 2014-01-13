@@ -560,7 +560,7 @@ class TextInfo(object):
                     .search(head_bytes)
             if m:
                 lang_encoding = m.group("encoding").decode('ascii')
-                norm_lang_encoding = _norm_encoding(lang_encoding.decode('ascii'))
+                norm_lang_encoding = _norm_encoding(lang_encoding)
                 if self._accessor.decode(norm_lang_encoding):
                     log.debug("encoding: encoding from lang-spec: %r",
                               norm_lang_encoding)

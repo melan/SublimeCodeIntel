@@ -41,6 +41,7 @@
 
 import copy
 import os.path
+import pprint
 import string
 import sys
 import re
@@ -996,11 +997,12 @@ class Parser:
         nameList = []
         while True:
             tok = self.tokenizer.get_next_token()
+            log.info("Arg tok: %s", pprint.pformat(tok))
             if self.classifier.is_variable(tok):
                 args = {'name': tok['text'], 'line': tok['start_line']}
                 if args['name'] == '$self':
                     args['aType'] = {'assign': self.moduleInfo.currentNS.name}
-                nameList.append(**args)
+                nameList.append(args)
 
             else:
                 break
@@ -1834,7 +1836,7 @@ class Parser:
                         break
     # end skip_to_end_of_stmt
 
-    def start_process_sub_definition( self, funcType, isInnerSub ):
+    def start_process_sub_definition(self, funcType, isInnerSub):
         tok = self.tokenizer.get_next_token()
         # Watch out for lexer buffoonery
         if self.classifier.is_identifier(tok) and len(tok['text'].strip()) == 0:
@@ -1864,44 +1866,41 @@ class Parser:
                         self.tokenizer.put_back(tok)
 
                     # Python doesn't have Perl's localizer, so we do this manually.
-                    # currFunction = self.moduleInfo.currentFunction
+                    currFunction = self.moduleInfo.currentFunction
                     # log.debug("currFunction: %s", pprint.pprint(currFunction))
                     self.moduleInfo.doStartFn(FunctionInfo(name=fnName.strip(), lineNo=startLineNo))
 
                     if parseArgs:
-                        nameList = ["$self"] if funcType == "method" else []
+                        argsList = [{'name': "$self", 'line': startLineNo, 'scope': 'my', 'aType':
+                            {'assign': self.moduleInfo.currentNS.name}}] if funcType == "method" else []
+
                         isOptional = False
                         while True:
                             tok = self.tokenizer.get_next_token()
+                            log.debug("TOK: %s", pprint.pformat(tok))
                             if self.classifier.is_variable(tok):
-                                if isOptional:
-                                    nameList.append("[" + tok["text"] + "]")
-                                else:
-                                    nameList.append(tok["text"])
+                                argsList.append({'name': "[" + tok["text"] + "]" if isOptional else tok["text"],
+                                                 'line': startLineNo, 'scope': 'my'})
                                 isOptional = False
 
                             elif self.classifier.is_operator(tok, ","):
+                                isOptional = False
                                 continue
                             elif self.classifier.is_operator(tok, ":"):
                                 isOptional = True
                             else:
                                 break
 
-                        for argName in nameList:
-                            if not (argName == "$self" and funcType == "method"):
-                                self.moduleInfo.doSetArg(argName)
+                        for arg in argsList:
+                            if not (arg["name"] == "$self" and funcType == "method"):
+                                self.moduleInfo.doSetArg(arg["name"])
 
-                            args = {'name': argName, 'line': startLineNo, 'scope': "my"}
-
-                            if argName == '$self' and funcType == 'method':
-                                args['aType'] = {'assign': self.moduleInfo.currentNS.name}
-
-                            self.moduleInfo.doSetVar(**args)
+                            self.moduleInfo.doSetVar(**arg)
 
                     self.process_sub_contents(isInnerSub)
                     self.moduleInfo.doEndFn(
                         lineNo=self.tokenizer.curr_line_no())
-                    # self.moduleInfo.currentFunction = currFunction
+                    self.moduleInfo.currentFunction = currFunction
             else:
                 self.skipAnonSubContents()
     # end start_process_sub_definition
