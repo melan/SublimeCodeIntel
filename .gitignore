@@ -7,3 +7,6 @@
 *.pyc
 *.pyo
 *.o
+
+.idea
+*.iml
